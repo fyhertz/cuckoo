@@ -8,6 +8,7 @@ import os.path
 import socket
 import tempfile
 import threading
+import re
 
 from cuckoo.common.config import config
 
@@ -16,31 +17,52 @@ unixpath = tempfile.mktemp()
 lock = threading.Lock()
 
 def rooter(command, *args, **kwargs):
-    if not os.path.exists(config("cuckoo:cuckoo:rooter")):
-        log.critical(
-            "Unable to passthrough root command (%s) as the rooter "
-            "unix socket doesn't exist.", command
-        )
-        return
 
-    lock.acquire()
+    rooter_config = config("cuckoo:cuckoo:rooter")
 
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    if not re.match("^.+:\d{1,5}", rooter_config):
+        if not os.path.exists(rooter_config):
+            log.critical(
+                "Unable to passthrough root command (%s) as the rooter "
+                "unix socket doesn't exist.", command
+            )
+            return
 
-    if os.path.exists(unixpath):
-        os.remove(unixpath)
+        lock.acquire()
 
-    s.bind(unixpath)
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 
-    try:
-        s.connect(config("cuckoo:cuckoo:rooter"))
-    except socket.error as e:
-        log.critical(
-            "Unable to passthrough root command as we're unable to "
-            "connect to the rooter unix socket: %s.", e
-        )
-        lock.release()
-        return
+        if os.path.exists(unixpath):
+            os.remove(unixpath)
+
+        s.bind(unixpath)
+
+        try:
+            s.connect(rooter_config)
+        except socket.error as e:
+            log.critical(
+                "Unable to passthrough root command as we're unable to "
+                "connect to the rooter unix socket: %s.", e
+            )
+            lock.release()
+            return
+
+    else:
+
+        lock.acquire()
+
+        host, port = rooter_config.split(":")
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        try:
+            s.connect((host, int(port)))
+        except socket.error as e:
+            log.critical(
+                "Unable to passthrough root command as we're unable to "
+                "connect to the rooter socket: %s.", e
+            )
+            lock.release()
+            return
 
     s.send(json.dumps({
         "command": command,

@@ -290,7 +290,7 @@ handlers = {
     "drop_disable": drop_disable,
 }
 
-def cuckoo_rooter(socket_path, group, ifconfig, service, iptables, ip):
+def cuckoo_rooter(socket_path, group, ifconfig, service, iptables, ip, host, port):
     if not HAVE_GRP:
         sys.exit(
             "Could not find the `grp` module, the Cuckoo Rooter is only "
@@ -321,25 +321,30 @@ def cuckoo_rooter(socket_path, group, ifconfig, service, iptables, ip):
             "works for users with sudo capabilities)."
         )
 
-    if os.path.exists(socket_path):
-        os.remove(socket_path)
+    if not host:
+        if os.path.exists(socket_path):
+            os.remove(socket_path)
 
-    server = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-    server.bind(socket_path)
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+        server.bind(socket_path)
 
-    # Provide the correct file ownership and permission so Cuckoo can use it
-    # from an unprivileged process, based on Sean Whalen's routetor.
-    try:
-        gr = grp.getgrnam(group)
-    except KeyError:
-        sys.exit(
-            "The group ('%s') does not exist. Please define the group / user "
-            "through which Cuckoo will connect to the rooter, e.g., "
-            "'cuckoo rooter -g myuser'" % group
-        )
+        # Provide the correct file ownership and permission so Cuckoo can use it
+        # from an unprivileged process, based on Sean Whalen's routetor.
+        try:
+            gr = grp.getgrnam(group)
+        except KeyError:
+            sys.exit(
+                "The group ('%s') does not exist. Please define the group / user "
+                "through which Cuckoo will connect to the rooter, e.g., "
+                "'cuckoo rooter -g myuser'" % group
+            )
 
-    os.chown(socket_path, 0, gr.gr_gid)
-    os.chmod(socket_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IWGRP)
+        os.chown(socket_path, 0, gr.gr_gid)
+        os.chmod(socket_path, stat.S_IRUSR | stat.S_IWUSR | stat.S_IWGRP)
+
+    else:
+        server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        server.bind((host, port))
 
     # Initialize global variables.
     s.ifconfig = ifconfig

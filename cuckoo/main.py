@@ -369,8 +369,10 @@ def process(ctx, instance, report, maxcount):
 @click.option("--iptables", type=click.Path(exists=True), default="/sbin/iptables", help="Path to iptables(8)")
 @click.option("--ip", type=click.Path(exists=True), default="/sbin/ip", help="Path to ip(8)")
 @click.option("--sudo", is_flag=True, help="Request superuser privileges")
+@click.option("-H", "--host", default="", help="Host to bind the Rooter on")
+@click.option("-p", "--port", default=8070, help="Port to bind the Rooter server on")
 @click.pass_context
-def rooter(ctx, socket, group, ifconfig, service, iptables, ip, sudo):
+def rooter(ctx, socket, group, ifconfig, service, iptables, ip, sudo, host, port):
     """Instantiates the Cuckoo Rooter."""
     init_console_logging(level=ctx.parent.level)
 
@@ -382,6 +384,8 @@ def rooter(ctx, socket, group, ifconfig, service, iptables, ip, sudo):
             "--service", service,
             "--iptables", iptables,
             "--ip", ip,
+            "--host", host,
+            "--port", str(port)
         ]
 
         if ctx.parent.level == logging.DEBUG:
@@ -393,7 +397,7 @@ def rooter(ctx, socket, group, ifconfig, service, iptables, ip, sudo):
             pass
     else:
         try:
-            cuckoo_rooter(socket, group, ifconfig, service, iptables, ip)
+            cuckoo_rooter(socket, group, ifconfig, service, iptables, ip, host, port)
         except KeyboardInterrupt:
             print(red("Aborting the Cuckoo Rooter.."))
 

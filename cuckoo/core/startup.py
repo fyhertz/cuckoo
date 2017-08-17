@@ -8,6 +8,7 @@ import logging.handlers
 import os
 import requests
 import socket
+import re
 
 from distutils.version import StrictVersion
 
@@ -294,34 +295,35 @@ def init_rooter():
     if not required:
         return
 
-    s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+    if not re.match("^.+:\d{1,5}", config("cuckoo:cuckoo:rooter")):
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 
-    try:
-        s.connect(config("cuckoo:cuckoo:rooter"))
-    except socket.error as e:
-        if e.strerror == "No such file or directory":
-            raise CuckooStartupError(
-                "The rooter is required but it is either not running or it "
-                "has been configured to a different Unix socket path. Please "
-                "refer to the documentation on working with the rooter."
-            )
+        try:
+            s.connect(config("cuckoo:cuckoo:rooter"))
+        except socket.error as e:
+            if e.strerror == "No such file or directory":
+                raise CuckooStartupError(
+                    "The rooter is required but it is either not running or it "
+                    "has been configured to a different Unix socket path. Please "
+                    "refer to the documentation on working with the rooter."
+                )
 
-        if e.strerror == "Connection refused":
-            raise CuckooStartupError(
-                "The rooter is required but we can't connect to it as the "
-                "rooter is not actually running. Please refer to the "
-                "documentation on working with the rooter."
-            )
+            if e.strerror == "Connection refused":
+                raise CuckooStartupError(
+                    "The rooter is required but we can't connect to it as the "
+                    "rooter is not actually running. Please refer to the "
+                    "documentation on working with the rooter."
+                )
 
-        if e.strerror == "Permission denied":
-            raise CuckooStartupError(
-                "The rooter is required but we can't connect to it due to "
-                "incorrect permissions. Did you assign it the correct group? "
-                "Please refer to the documentation on working with the "
-                "rooter."
-            )
+            if e.strerror == "Permission denied":
+                raise CuckooStartupError(
+                    "The rooter is required but we can't connect to it due to "
+                    "incorrect permissions. Did you assign it the correct group? "
+                    "Please refer to the documentation on working with the "
+                    "rooter."
+                )
 
-        raise CuckooStartupError("Unknown rooter error: %s" % e)
+            raise CuckooStartupError("Unknown rooter error: %s" % e)
 
     # Do not forward any packets unless we have explicitly stated so.
     rooter("forward_drop")
