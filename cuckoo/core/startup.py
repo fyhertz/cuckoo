@@ -341,17 +341,18 @@ def init_routing():
     if config("routing:vpn:enabled"):
         for name in config("routing:vpn:vpns"):
             entry = config2("routing", name)
-            if not rooter("nic_available", entry.interface):
-                raise CuckooStartupError(
-                    "The network interface that has been configured for "
-                    "VPN %s is not available." % entry.name
-                )
+            if not re.match("^.+:\d{1,5}", config("cuckoo:cuckoo:rooter")):
+                if not rooter("nic_available", entry.interface):
+                    raise CuckooStartupError(
+                        "The network interface that has been configured for "
+                        "VPN %s is not available." % entry.name
+                    )
 
-            if not rooter("rt_available", entry.rt_table):
-                raise CuckooStartupError(
-                    "The routing table that has been configured for "
-                    "VPN %s is not available." % entry.name
-                )
+                if not rooter("rt_available", entry.rt_table):
+                    raise CuckooStartupError(
+                        "The routing table that has been configured for "
+                        "VPN %s is not available." % entry.name
+                    )
 
             interfaces.add((entry.rt_table, entry.interface))
 
